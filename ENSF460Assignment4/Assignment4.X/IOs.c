@@ -9,7 +9,7 @@
 #define TIMER2 T2CONbits.TON
 #define TIMER3 T3CONbits.TON
 
-void IOinit() {
+void IOInit() {
     /* Let's set up some I/O */
     TRISBbits.TRISB8 = 0;
     
@@ -24,9 +24,10 @@ void IOinit() {
     TRISAbits.TRISA2 = 1;
     CNPU2bits.CN30PUE = 1;
     CNEN2bits.CN30IE = 1;
+    
 }
 
-void Timerinit() {
+void TimerInit() {
     T2CONbits.T32 = 0; //16-Bit timers
     
     T3CONbits.TCKPS = 1;   //Prescaler for Timer 3 set to 1:8.
@@ -52,12 +53,9 @@ void Timerinit() {
 }
 
 
-
-
 uint8_t IOCheck(){
     uint8_t PB_status;
-    PB_status = (BUTTON_3 << 2 | BUTTON_2 << 1 | BUTTON_1) ^ 0b111;
-    if (PB_status >= 0b100) return 0b100;
-    else return PB_status;
+    PB_status = BUTTON_1;
+    return PB_status;
 }
 

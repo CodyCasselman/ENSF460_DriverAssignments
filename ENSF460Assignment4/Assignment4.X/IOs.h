@@ -9,8 +9,9 @@
 #define IOS_H
 
 #include <xc.h>
-#include "state.h"
+
 void IOInit();
+void TimerInit();
 uint8_t IOCheck();
 
 
