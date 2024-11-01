@@ -64,10 +64,12 @@
 #include "ADC.h"
 #include <stdio.h>
 
-uint16_t value;
+uint16_t adc_value;
 uint16_t mode;
-uint16_t ratio;
-uint16_t t2_flag;
+uint16_t button_event;
+uint16_t enter_state_flag;
+uint16_t mode0_rate;
+uint16_t mode1_rate;
 
 int main(void) {
     AD1PCFG = 0xFFEF; //Read from AN5
@@ -83,35 +85,58 @@ int main(void) {
     TimerInit();    
     ADCInit();
     
-    delay_ms(1000, 2);
-    TIMER2 = 1;
-    t2_flag = 0;
+    //Set rate to check ADC input
+    mode0_rate = 1000;
+    mode1_rate = 500; 
+    
+    //Start in mode 0
+    delay_ms(mode0_rate, 2);
+    delay_ms(10, 3);
+    button_event = 1;
     mode = 0;
+    enter_state_flag = 1;
     
     while(1) {
-        if (t2_flag) {
+        if (button_event) {
             switch(mode) {
                 case 0: //Realterm
-                        Disp2String("\033[2K"); //Clears line?
-                        Disp2String("MODE 0: ");
-                        value = do_ADC();
-                        ratio = (value + 1) / 16;
+                    //Initial Mode 0 output
+                    if(enter_state_flag){
+                        Disp2String("MODE 0: \r");
                         
-                        for (int i = 0; i < ratio; i++) {
+                        //Turn on timer for reading potentiometer
+                        delay_ms(mode0_rate, 2);
+                        TMR2 = 0;
+                        TIMER2 = 1;
+                        enter_state_flag = 0;
+                    }
+                        //Find star amount and spaces after
+                        adc_value = do_ADC();
+                        uint16_t max_stars = 64;
+                        uint16_t num_stars = (adc_value + 1) / 16;
+                        if (num_stars < 1) { //Lowest reading
+                            num_stars = 1;
+                        }
+                        uint16_t spaces = max_stars - num_stars;
+                        
+                        //Print stars to Realterm, account for previous star line clearing
+                        Disp2String("\033[8C");
+                        for (uint16_t i = 0; i < num_stars; i++) {
                             Disp2String("*");
                         }
-
-                        Disp2String(" "); //Space after 
-
-                        Disp2Hex(value);
+                        
+                        Disp2Hex(adc_value); //Potentiometer reading output
+                        
+                        for (uint16_t j = 0; j < spaces; j++) {
+                            Disp2String(" ");
+                        }
+                        
                         Disp2String("\r");
                         break;
                 case 1: //Python
                     Disp2String("MODE 1: ");
                     break;
             };     
-            
-            t2_flag = 0;
         }
                         
         Idle();
@@ -122,17 +147,22 @@ int main(void) {
 void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void){
     //Don't forget to clear the timer 2 interrupt flag!
     IFS0bits.T2IF = 0;
-    t2_flag = 1;
 }
 
 void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void){
     //Don't forget to clear the timer 3 interrupt flag!
     IFS0bits.T3IF = 0;
+    button_event = 1;
+    
+    //Change mode on button release
+    if (BUTTON_1 == 1) {
+        mode ^= 1;
+    }
 }
 
 void __attribute__((interrupt, no_auto_psv)) _CNInterrupt(void){
     IFS1bits.CNIF = 0; //Clear flag 
-    
-    //Button down changes the mode
-    mode ^= 1;
+    TMR3 = 0;
+    TIMER3 = 1; //Turn on buffer timer
+    button_event = 0; //Don't do anything until buffer finishes    
 }
