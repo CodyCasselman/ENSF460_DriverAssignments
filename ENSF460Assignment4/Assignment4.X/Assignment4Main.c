@@ -70,6 +70,12 @@ uint16_t button_event;
 uint16_t enter_state_flag;
 uint16_t mode0_rate;
 uint16_t mode1_rate;
+uint16_t PBX_event;
+uint16_t startBuffer;
+uint16_t pb1_down;
+uint16_t pb2_down;
+uint16_t pb2_history;
+uint16_t start_sending_flag;
 
 int main(void) {
     AD1PCFG = 0xFFEF; //Read from AN5
@@ -95,11 +101,35 @@ int main(void) {
     button_event = 1;
     mode = 0;
     enter_state_flag = 1;
+    startBuffer = 0;
+    PBX_event = 0;
+    pb1_down = 0;
+    pb2_down = 0;
+    pb2_history = 0;
+    start_sending_flag = 0;
     
     while(1) {
-        if (button_event) {
+        if (startBuffer)        //If the CN interrupt has turned on the input buffer
+        {
+            TMR3 = 0;           //Reset the timer
+            TIMER3 = 1;         //Turn it on 
+        }
+        if(PBX_event)
+        {
+            //capturing inputs after a PBX event
+            pb2_history = pb2_down;
+            pb2_down = !BUTTON_2;
+            if(BUTTON_1 && !pb2_down)
+            {
+                mode ^= 1;
+                enter_state_flag = 1;          
+            }
+            PBX_event = 0;
+        }
+        if (!startBuffer) {
             switch(mode) {
                 case 0: //Realterm
+                    
                     //Initial Mode 0 output
                     if(enter_state_flag){
                         Disp2String("MODE 0: \r");
@@ -134,35 +164,35 @@ int main(void) {
                         Disp2String("\r");
                         break;
                 case 1: //Python
-                    Disp2String("MODE 1: ");
+                    if(enter_state_flag)
+                    {
+                        delay_ms(mode1_rate, 2);
+                        TMR2 = 0;
+                    }
+                    if(pb2_down == 0 && pb2_history == 1)
+                    {
+                        start_sending_flag == 1;
+                    }
                     break;
             };     
-        }
-                        
+        }               
         Idle();
     } 
     return 0;
 }
 
 void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void){
-    //Don't forget to clear the timer 2 interrupt flag!
-    IFS0bits.T2IF = 0;
+    
+    IFS0bits.T2IF = 0; //Clear flag
 }
 
 void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void){
-    //Don't forget to clear the timer 3 interrupt flag!
-    IFS0bits.T3IF = 0;
-    button_event = 1;
     
-    //Change mode on button release
-    if (BUTTON_1 == 1) {
-        mode ^= 1;
-    }
+    IFS0bits.T3IF = 0; //Clear flag
+    PBX_event = 1;
 }
 
 void __attribute__((interrupt, no_auto_psv)) _CNInterrupt(void){
     IFS1bits.CNIF = 0; //Clear flag 
-    TMR3 = 0;
-    TIMER3 = 1; //Turn on buffer timer
-    button_event = 0; //Don't do anything until buffer finishes    
+    startBuffer = 1;
 }
