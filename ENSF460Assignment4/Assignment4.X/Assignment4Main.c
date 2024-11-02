@@ -72,6 +72,7 @@ uint8_t mode;
 uint8_t enterStateFlag;
 uint8_t exitStateFlag;
 uint8_t beginRecordingFlag;
+uint8_t recordingFlag;
 
 uint16_t adcValue;
 
@@ -97,7 +98,8 @@ int main(void) {
     startBuffer = 0;
     enterStateFlag = 1;
     exitStateFlag = 0;
-    
+    beginRecordingFlag = 0;
+    recordingFlag = 0;
     
     while(1) {
         if (!startBuffer) {
@@ -123,34 +125,19 @@ int main(void) {
                         TIMER2 = 1;
                     }
                     
-                    adcValue = do_ADC();
-                    
-                    //Find star amount and spaces after
-                    uint16_t max_stars = 64;
-                    uint16_t num_stars = (adcValue + 1) / 16;
-                    if (num_stars < 1) { //Lowest reading
-                        num_stars = 1;
-                    }
-                    uint16_t spaces = max_stars - num_stars;
-
-                    //Print stars to Realterm, account for previous star line clearing
-                    Disp2String("\033[8C");
-                    for (uint16_t i = 0; i < num_stars; i++) {
-                        Disp2String("*");
-                    }
-                    Disp2Hex(adcValue); //Potentiometer reading output
-                    for (uint16_t j = 0; j < spaces; j++) {
-                        Disp2String(" ");
-                    }
-                    Disp2String("\r");
+                    print_stars();
                     
                     break;
                 case 1: //Python
                     //STATE EXIT LOGIC
                     if(exitStateFlag){
+                        //change state
                         mode = 0;
+                        //change flag values
                         enterStateFlag = 1;
                         exitStateFlag = 0;
+                        beginRecordingFlag = 0;
+                        recordingFlag = 0;
                         TIMER2 = 0;
                         continue;
                     }
@@ -158,12 +145,22 @@ int main(void) {
                     if(enterStateFlag){
                         //print something to the terminal
                         Disp2String("\33[2K\r");
-                        Disp2String("MODE 1: \r");
+                        Disp2String("MODE 1: CLOSE PORT AND TURN ON PYTHON\r");
                         enterStateFlag = 0;
                         //change timer delay
                         delay_ms(mode1Rate, 2);
                         TMR2 = 0;
                         TIMER2 = 1;
+                    }
+                    if(beginRecordingFlag){
+                        Disp2String("BEGIN\n");
+                        beginRecordingFlag = 0;
+                        recordingFlag = 1;
+                    }
+                    if(recordingFlag){
+                        adcValue = do_ADC();
+                        Disp2Hex(adcValue);
+                        Disp2String("\n");
                     }
                     break;
             };  
@@ -200,10 +197,33 @@ void __attribute__((interrupt, no_auto_psv)) _CNInterrupt(void){
     //CN interrupt should start the buffer and collect inputs
     IFS1bits.CNIF = 0; //Clear flag 
     //Left shift button history, concatenate with current button value
-    PB1History = (PB1History >> 1) | (BUTTON_1 ^ 1);
-    PB2History = (PB2History >> 1) | (BUTTON_2 ^ 1);
+    PB1History = (PB1History << 1) | (BUTTON_1 ^ 1);
+    PB2History = (PB2History << 1) | (BUTTON_2 ^ 1);
     //Start buffer timer and reset timer value
     startBuffer = 1;
     TMR3 = 0;
     TIMER3 = 1;
+}
+
+void print_stars(){
+    adcValue = do_ADC();
+                    
+    //Find star amount and spaces after
+    uint16_t max_stars = 64;
+    uint16_t num_stars = (adcValue + 1) / 16;
+    if (num_stars < 1) { //Lowest reading
+        num_stars = 1;
+    }
+    uint16_t spaces = max_stars - num_stars;
+
+    //Print stars to Realterm, account for previous star line clearing
+    Disp2String("\033[8C");
+    for (uint16_t i = 0; i < num_stars; i++) {
+        Disp2String("*");
+    }
+    Disp2Hex(adcValue); //Potentiometer reading output
+    for (uint16_t j = 0; j < spaces; j++) {
+        Disp2String(" ");
+    }
+    Disp2String("\r");
 }
