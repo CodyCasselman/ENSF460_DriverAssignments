@@ -73,6 +73,7 @@ uint16_t mode1_rate;
 uint16_t PBX_event;
 uint16_t startBuffer;
 uint16_t pb1_down;
+uint16_t pb1_history;
 uint16_t pb2_down;
 uint16_t pb2_history;
 uint16_t start_sending_flag;
@@ -95,15 +96,19 @@ int main(void) {
     mode0_rate = 1000;
     mode1_rate = 500; 
     
-    //Start in mode 0
+    //INITIAL VALUES
+    delay_ms(10, 3); //TIMER3 WILL ALWAYS BE 10ms
+    
     delay_ms(mode0_rate, 2);
-    delay_ms(10, 3);
-    button_event = 1;
     mode = 0;
     enter_state_flag = 1;
+    
     startBuffer = 0;
     PBX_event = 0;
+    //FOR MODE SWITCHING
     pb1_down = 0;
+    pb1_history = 0;
+    //PYTHON VALUES
     pb2_down = 0;
     pb2_history = 0;
     start_sending_flag = 0;
@@ -117,19 +122,26 @@ int main(void) {
         if(PBX_event)
         {
             //capturing inputs after a PBX event
+            pb1_history = pb1_down;
+            pb1_down = BUTTON_1 ^ 1;
             pb2_history = pb2_down;
-            pb2_down = !BUTTON_2;
-            if(BUTTON_1 && !pb2_down)
-            {
-                mode ^= 1;
-                enter_state_flag = 1;          
-            }
+            pb2_down = BUTTON_2 ^ 1;
+            //reset pbx_event
             PBX_event = 0;
+            startBuffer = 0;
         }
         if (!startBuffer) {
             switch(mode) {
                 case 0: //Realterm
-                    
+                    //STATE SWITCHING LOGIC
+                    if(!pb1_down && pb1_history)
+                    {
+                        //change the state and turn off the timer
+                        mode = 1;
+                        enter_state_flag = 1;
+                        TIMER2 = 0;
+                        break;
+                    }
                     //Initial Mode 0 output
                     if(enter_state_flag){
                         Disp2String("MODE 0: \r");
@@ -140,32 +152,40 @@ int main(void) {
                         TIMER2 = 1;
                         enter_state_flag = 0;
                     }
-                        //Find star amount and spaces after
-                        adc_value = do_ADC();
-                        uint16_t max_stars = 64;
-                        uint16_t num_stars = (adc_value + 1) / 16;
-                        if (num_stars < 1) { //Lowest reading
-                            num_stars = 1;
-                        }
-                        uint16_t spaces = max_stars - num_stars;
-                        
-                        //Print stars to Realterm, account for previous star line clearing
-                        Disp2String("\033[8C");
-                        for (uint16_t i = 0; i < num_stars; i++) {
-                            Disp2String("*");
-                        }
-                        
-                        Disp2Hex(adc_value); //Potentiometer reading output
-                        
-                        for (uint16_t j = 0; j < spaces; j++) {
-                            Disp2String(" ");
-                        }
-                        
-                        Disp2String("\r");
-                        break;
+                    //Find star amount and spaces after
+                    adc_value = do_ADC();
+                    uint16_t max_stars = 64;
+                    uint16_t num_stars = (adc_value + 1) / 16;
+                    if (num_stars < 1) { //Lowest reading
+                        num_stars = 1;
+                    }
+                    uint16_t spaces = max_stars - num_stars;
+
+                    //Print stars to Realterm, account for previous star line clearing
+                    Disp2String("\033[8C");
+                    for (uint16_t i = 0; i < num_stars; i++) {
+                        Disp2String("*");
+                    }
+
+                    Disp2Hex(adc_value); //Potentiometer reading output
+
+                    for (uint16_t j = 0; j < spaces; j++) {
+                        Disp2String(" ");
+                    }
+
+                    Disp2String("\r");
+                    break;
                 case 1: //Python
+                    //STATE EXIT LOGIC
+                    if(!pb1_down && pb1_history)
+                    {
+                        mode = 0;
+                        enter_state_flag = 1;
+                        break;
+                    }
                     if(enter_state_flag)
                     {
+                        Disp2String("MODE 1:");
                         delay_ms(mode1_rate, 2);
                         TMR2 = 0;
                     }
@@ -173,6 +193,8 @@ int main(void) {
                     {
                         start_sending_flag == 1;
                     }
+                    break;
+                default:
                     break;
             };     
         }               

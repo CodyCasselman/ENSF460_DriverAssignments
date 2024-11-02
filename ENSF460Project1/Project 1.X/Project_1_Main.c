@@ -148,7 +148,8 @@ int main(void) {
         {
             TMR2 = 0;           //Reset the timer
             delay_ms(10, 2);    //Set the input buffer time to 10 milliseconds
-            TIMER2 = 1;         //Turn it on    
+            TIMER2 = 1;         //Turn it on
+             
         }
         if(PBX_event)   //Once timer 2 sends back that the input buffer is over, read the inputs
         {

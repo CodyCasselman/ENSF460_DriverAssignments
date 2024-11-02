@@ -203,6 +203,9 @@
         <property key="relaxed-math" value="false"/>
         <property key="save-temps" value="false"/>
       </C30Global>
+      <snap>
+        <property key="debugoptions.useswbreakpoints" value="true"/>
+      </snap>
     </conf>
   </confs>
 </configurationDescriptor>

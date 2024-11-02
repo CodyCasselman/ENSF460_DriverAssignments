@@ -22,8 +22,6 @@ uint32_t timer_freq = 8000000;
 uint32_t ms_to_s_factor = 1000;
 
 void delay_ms(uint32_t time_ms, uint8_t timerNum){ //0 <= time_ms <= 986880ms
-
-    
     if(timerNum == 2){
         PR2 = (uint16_t)calculate_pr(time_ms, timer2_prescale);
         T2CONbits.TCKPS = 1;
