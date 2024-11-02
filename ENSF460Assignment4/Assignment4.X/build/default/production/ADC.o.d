@@ -1,1 +1,3 @@
-build/default/production/ADC.o: ADC.c
+build/default/production/ADC.o: ADC.c ADC.h
+
+ADC.h:

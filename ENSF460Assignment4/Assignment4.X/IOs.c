@@ -11,46 +11,23 @@
 
 void IOInit() {
     /* Let's set up some I/O */
-    TRISBbits.TRISB8 = 0;
-    
-    TRISAbits.TRISA4 = 1;
-    CNPU1bits.CN0PUE = 1;
-    CNEN1bits.CN0IE = 1;
-    
+    //Set the direction of RB4 (PB2) to input
     TRISBbits.TRISB4 = 1;
-    CNPU1bits.CN1PUE = 1;
-    CNEN1bits.CN1IE = 1;
-    
+    CNPU1bits.CN1PUE = 1; //Enable the pull-up
+    CNEN1bits.CN1IE = 1; //Enable the interrupt
+    //Set the direction of RA2 (PB1) to input
     TRISAbits.TRISA2 = 1;
-    CNPU2bits.CN30PUE = 1;
-    CNEN2bits.CN30IE = 1;
-    
+    CNPU2bits.CN30PUE = 1; //Enable the pull-up
+    CNEN2bits.CN30IE = 1; //Enable the CN interrupt
+    //Enable CN Interrupts for buttons and set their priority
+    IPC4bits.CNIP = 6;
+    IFS1bits.CNIF = 0;
+    IEC1bits.CNIE = 1;
+    //Set the direction of the potentiometer to be input
+    TRISAbits.TRISA3 = 1; 
 }
 
-void TimerInit() {
-    T2CONbits.T32 = 0; //16-Bit timers
-    
-    T3CONbits.TCKPS = 1;   //Prescaler for Timer 3 set to 1:8.
-    T3CONbits.TCS = 0;     //Timer 3 clock source is the internal clock (Fcy).
-    T3CONbits.TSIDL = 0;   //Timer 3 continues running in idle mode.
-    IPC2bits.T3IP = 2;     //Interrupt priority for Timer 3 set to 2.
-    IFS0bits.T3IF = 0;     //Clear Timer 3 interrupt flag.
-    IEC0bits.T3IE = 1;     //Enable Timer 3 interrupt.
-    
-    T2CONbits.TCKPS = 1;   //Prescaler for Timer 2 set to 1:8.
-    T2CONbits.TCS = 0;     //Timer 2 clock source is the internal clock (Fcy).
-    T2CONbits.TSIDL = 0;   //Timer 2 continues running in idle mode.
-    IPC1bits.T2IP = 2;     //Interrupt priority for Timer 2 set to 2.
-    IFS0bits.T2IF = 0;     //Clear Timer 2 interrupt flag.
-    IEC0bits.T2IE = 1;     //Enable Timer 2 interrupt.
-    
-    TMR2 = 0;
-    TIMER2 = 0;
-    //PR2 = 3125; //100ms delay at 500kHz clock freq.
-    
-    TMR3 = 0;
-    TIMER3 = 0;
-}
+
 
 
 uint8_t IOCheck(){

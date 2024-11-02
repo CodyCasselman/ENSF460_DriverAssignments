@@ -5,7 +5,6 @@
  * Created on October 28, 2024, 1:18 PM
  */
 
-//BELOW CODE COPIED FROM PROJECT 1 MAIN
 // FBS
 #pragma config BWRP = OFF               // Table Write Protect Boot (Boot segment may be written)
 #pragma config BSS = OFF                // Boot segment Protect (No boot program Flash segment)
@@ -49,6 +48,7 @@
 #pragma config DSWDTEN = ON             // Deep Sleep Watchdog Timer Enable bit (DSWDT enabled)
 
 // #pragma config statements should precede project file includes.
+//Defines to improve readability
 #define BUTTON_1 PORTAbits.RA2
 #define BUTTON_2 PORTBbits.RB4
 #define BUTTON_3 PORTAbits.RA4
@@ -64,27 +64,22 @@
 #include "ADC.h"
 #include <stdio.h>
 
-uint16_t adc_value;
-uint16_t mode;
-uint16_t button_event;
-uint16_t enter_state_flag;
-uint16_t mode0_rate;
-uint16_t mode1_rate;
-uint16_t PBX_event;
-uint16_t startBuffer;
-uint16_t pb1_down;
-uint16_t pb1_history;
-uint16_t pb2_down;
-uint16_t pb2_history;
-uint16_t start_sending_flag;
+uint16_t mode0Rate;
+uint16_t mode1Rate;
+
+uint8_t startBuffer;
+uint8_t mode;
+uint8_t enterStateFlag;
+uint8_t exitStateFlag;
+uint8_t beginRecordingFlag;
+
+uint16_t adcValue;
+
+uint16_t PB1History;
+uint16_t PB2History;
 
 int main(void) {
-    AD1PCFG = 0xFFEF; //Read from AN5
-    newClk(500);
-    IPC4bits.CNIP = 6;
-    IFS1bits.CNIF = 0;
-    IEC1bits.CNIE = 1;
-        
+    newClk(500); //set the clock speed
     
     // INITIALIZATION OF UART, IO, ADC and TIMERS   
     InitUART2();
@@ -93,69 +88,46 @@ int main(void) {
     ADCInit();
     
     //Set rate to check ADC input
-    mode0_rate = 1000;
-    mode1_rate = 500; 
-    
-    //INITIAL VALUES
-    delay_ms(10, 3); //TIMER3 WILL ALWAYS BE 10ms
-    
-    delay_ms(mode0_rate, 2);
-    mode = 0;
-    enter_state_flag = 1;
+    mode0Rate = 1000;
+    mode1Rate = 500; 
+    //PB1 and PB2 have not been interacted with
+    PB1History = 0;
+    PB2History = 0;
     
     startBuffer = 0;
-    PBX_event = 0;
-    //FOR MODE SWITCHING
-    pb1_down = 0;
-    pb1_history = 0;
-    //PYTHON VALUES
-    pb2_down = 0;
-    pb2_history = 0;
-    start_sending_flag = 0;
+    enterStateFlag = 1;
+    exitStateFlag = 0;
+    
     
     while(1) {
-        if (startBuffer)        //If the CN interrupt has turned on the input buffer
-        {
-            TMR3 = 0;           //Reset the timer
-            TIMER3 = 1;         //Turn it on 
-        }
-        if(PBX_event)
-        {
-            //capturing inputs after a PBX event
-            pb1_history = pb1_down;
-            pb1_down = BUTTON_1 ^ 1;
-            pb2_history = pb2_down;
-            pb2_down = BUTTON_2 ^ 1;
-            //reset pbx_event
-            PBX_event = 0;
-            startBuffer = 0;
-        }
         if (!startBuffer) {
             switch(mode) {
                 case 0: //Realterm
-                    //STATE SWITCHING LOGIC
-                    if(!pb1_down && pb1_history)
-                    {
-                        //change the state and turn off the timer
+                    //STATE EXIT LOGIC
+                    if(exitStateFlag){
                         mode = 1;
-                        enter_state_flag = 1;
+                        enterStateFlag = 1;
+                        exitStateFlag = 0;
                         TIMER2 = 0;
-                        break;
+                        continue;
                     }
-                    //Initial Mode 0 output
-                    if(enter_state_flag){
+                    //STATE ENTRY LOGIC
+                    if(enterStateFlag){
+                        enterStateFlag = 0;
+                        Disp2String("\33[2K\r");
                         Disp2String("MODE 0: \r");
                         
-                        //Turn on timer for reading potentiometer
-                        delay_ms(mode0_rate, 2);
+                        //Change timer2 config. Turn it on
+                        delay_ms(mode0Rate, 2);
                         TMR2 = 0;
                         TIMER2 = 1;
-                        enter_state_flag = 0;
                     }
+                    
+                    adcValue = do_ADC();
+                    
                     //Find star amount and spaces after
-                    adc_value = do_ADC();
                     uint16_t max_stars = 64;
-                    uint16_t num_stars = (adc_value + 1) / 16;
+                    uint16_t num_stars = (adcValue + 1) / 16;
                     if (num_stars < 1) { //Lowest reading
                         num_stars = 1;
                     }
@@ -166,37 +138,35 @@ int main(void) {
                     for (uint16_t i = 0; i < num_stars; i++) {
                         Disp2String("*");
                     }
-
-                    Disp2Hex(adc_value); //Potentiometer reading output
-
+                    Disp2Hex(adcValue); //Potentiometer reading output
                     for (uint16_t j = 0; j < spaces; j++) {
                         Disp2String(" ");
                     }
-
                     Disp2String("\r");
+                    
                     break;
                 case 1: //Python
                     //STATE EXIT LOGIC
-                    if(!pb1_down && pb1_history)
-                    {
+                    if(exitStateFlag){
                         mode = 0;
-                        enter_state_flag = 1;
-                        break;
+                        enterStateFlag = 1;
+                        exitStateFlag = 0;
+                        TIMER2 = 0;
+                        continue;
                     }
-                    if(enter_state_flag)
-                    {
-                        Disp2String("MODE 1:");
-                        delay_ms(mode1_rate, 2);
+                    //STATE ENTRY LOGIC
+                    if(enterStateFlag){
+                        //print something to the terminal
+                        Disp2String("\33[2K\r");
+                        Disp2String("MODE 1: \r");
+                        enterStateFlag = 0;
+                        //change timer delay
+                        delay_ms(mode1Rate, 2);
                         TMR2 = 0;
-                    }
-                    if(pb2_down == 0 && pb2_history == 1)
-                    {
-                        start_sending_flag == 1;
+                        TIMER2 = 1;
                     }
                     break;
-                default:
-                    break;
-            };     
+            };  
         }               
         Idle();
     } 
@@ -204,17 +174,36 @@ int main(void) {
 }
 
 void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void){
-    
+    //Timer 2 is responsible for waking the microcontroller to read and output adc input
     IFS0bits.T2IF = 0; //Clear flag
 }
 
 void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void){
-    
+    //Timer 3 is our buffer timer
     IFS0bits.T3IF = 0; //Clear flag
-    PBX_event = 1;
+    TIMER3 = 0; //Turn timer off
+    startBuffer = 0; //Reset buffer flag
+    //isolate the most recent button states. See if it was on and then off
+    if((PB1History & 0b11) == 0b10)
+    {
+        exitStateFlag = 1; //CHANGE STATE
+        PB1History = 0; //Reset PB1History
+    }
+    if((PB2History & 0b11) == 0b10)
+    {
+        beginRecordingFlag = 1; //Begin recording data for python
+        PB2History = 0; //Reset PB2History
+    }
 }
 
 void __attribute__((interrupt, no_auto_psv)) _CNInterrupt(void){
+    //CN interrupt should start the buffer and collect inputs
     IFS1bits.CNIF = 0; //Clear flag 
+    //Left shift button history, concatenate with current button value
+    PB1History = (PB1History >> 1) | (BUTTON_1 ^ 1);
+    PB2History = (PB2History >> 1) | (BUTTON_2 ^ 1);
+    //Start buffer timer and reset timer value
     startBuffer = 1;
+    TMR3 = 0;
+    TIMER3 = 1;
 }

@@ -11,7 +11,6 @@
 #include <xc.h>
 
 void IOInit();
-void TimerInit();
 uint8_t IOCheck();
 
 
