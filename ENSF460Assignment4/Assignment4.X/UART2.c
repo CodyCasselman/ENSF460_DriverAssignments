@@ -1,8 +1,7 @@
-/* 
+/*
  * File:   UART2.c
- * Author: keery
+ * Authors: Cody C, Evan M, Keeryn J
  *
- * Created on October 3, 2024, 6:02 PM
  */
 
 #include "xc.h"

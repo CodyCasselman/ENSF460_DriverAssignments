@@ -9,7 +9,7 @@ serial_port = serial.Serial(port= "COM3", baudrate = 9600, bytesize = 8, timeout
 #FLAGS AND INSTANTIATIONS
 begin_detecting = False     #flag to know whether to begin recording ADC values
 start_time = 0
-read_time = 10              #amount of seconds to read the ADC for
+read_time = 10             #amount of seconds to read the ADC for
 detection_times = []        #timestamps of when numbers were recorded
 numbers_detected = ''       #string which holds all the values written from ADC
 end_loop = False
@@ -49,7 +49,14 @@ numbers_detected = numbers_detected.split(' \n ')  # split string by \n n store 
 voltages = [float(adcbuf) * resolution for adcbuf in numbers_detected] #Voltage = Buffer Value * Resolution
 ADCBufferValue = [float(adcbuf) for adcbuf in numbers_detected]
 #Creating a DataFrame
+print(numbers_detected[0], numbers_detected[-1])
+print(detection_times[0], detection_times[-1])
+print(len(numbers_detected))
+print(len(voltages))
+print(len(ADCBufferValue))
+print(len(detection_times))
 d = {'Voltage': voltages, 'ADC Buffer Value':ADCBufferValue, 'Time': detection_times}
+
 dataFrame = pd.DataFrame(data= d)
 #Store the data in a csv file
 dataFrame.to_csv("ADCValues.csv", index=False)

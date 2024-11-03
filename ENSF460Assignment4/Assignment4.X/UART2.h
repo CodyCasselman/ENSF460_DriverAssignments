@@ -1,8 +1,6 @@
 /* 
  * File:   UART2.h
- * Author: rvyas
- *
- * Created on November 19, 2016, 9:22 PM
+ * Authors: Cody C, Evan M, Keeryn J
  */
 
 #ifndef UART2_H

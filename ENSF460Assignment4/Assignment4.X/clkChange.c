@@ -1,3 +1,8 @@
+/*
+ * File:   clkChange.c
+ * Authors: Cody C, Evan M, Keeryn J
+ *
+ */
 #include "clkChange.h"
 
 void newClk(unsigned int clkval) {

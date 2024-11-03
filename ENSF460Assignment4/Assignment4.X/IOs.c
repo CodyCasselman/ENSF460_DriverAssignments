@@ -1,3 +1,9 @@
+/*
+ * File:   IOS.c
+ * Authors: Cody C, Evan M, Keeryn J
+ *
+ */
+
 #include "IOs.h"
 #include "TimeDelay.h"
 #include "xc.h"

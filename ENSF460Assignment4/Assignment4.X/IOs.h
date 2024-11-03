@@ -1,8 +1,6 @@
 /* 
- * File:   IOs.h
- * Author: keery
- *
- * Created on October 3, 2024, 7:56 PM
+ * File:   IOS.h
+ * Authors: Cody C, Evan M, Keeryn J
  */
 
 #ifndef IOS_H

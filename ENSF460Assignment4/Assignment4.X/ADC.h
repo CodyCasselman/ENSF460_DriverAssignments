@@ -1,9 +1,6 @@
-
 /* 
- * File:   
- * Author: 
- * Comments:
- * Revision history: 
+ * File:   ADC.h
+ * Authors: Cody C, Evan M, Keeryn J
  */
 
 #ifndef ADC_H

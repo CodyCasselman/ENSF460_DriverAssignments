@@ -1,8 +1,6 @@
 /* 
  * File:   TimeDelay.h
- * Author: keeryn
- *
- * Created on October 3, 2024, 7:57 PM
+ * Authors: Cody C, Evan M, Keeryn J
  */
 
 #ifndef TIMEDELAY_H

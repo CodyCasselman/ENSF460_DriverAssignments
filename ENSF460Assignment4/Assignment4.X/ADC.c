@@ -1,8 +1,7 @@
 /*
  * File:   ADC.c
- * Author: codyc
+ * Authors: Cody C, Evan M, Keeryn J
  *
- * Created on October 28, 2024, 1:19 PM
  */
 
 

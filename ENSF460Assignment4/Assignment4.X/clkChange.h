@@ -1,8 +1,6 @@
 /* 
  * File:   clkChange.h
- * Author: keery
- *
- * Created on October 3, 2024, 6:03 PM
+ * Authors: Cody C, Evan M, Keeryn J
  */
 
 #ifndef CHANGECLK_H

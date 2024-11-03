@@ -1,8 +1,7 @@
 /*
  * File:   Assignment4Main.c
- * Author: Cody C, Evan M, Keeryn J
+ * Authors: Cody C, Evan M, Keeryn J
  *
- * Created on October 28, 2024, 1:18 PM
  */
 
 // FBS
@@ -53,6 +52,7 @@
 #define BUTTON_2 PORTBbits.RB4
 #define BUTTON_3 PORTAbits.RA4
 #define LED LATBbits.LATB8
+#define TIMER1 T1CONbits.TON
 #define TIMER2 T2CONbits.TON
 #define TIMER3 T3CONbits.TON
 
@@ -73,6 +73,7 @@ uint8_t enterStateFlag;
 uint8_t exitStateFlag;
 uint8_t beginRecordingFlag;
 uint8_t recordingFlag;
+uint8_t cyclesSinceRecording;
 
 uint16_t adcValue;
 
@@ -87,7 +88,8 @@ int main(void) {
     IOInit();
     TimerInit();    
     ADCInit();
-    delay_ms(50, 3);
+    delay_ms(50, 3); //set buffer delay to 50ms
+    delay_ms(2550, 1); //set recording timer to 2.55s (Gives a 0.2s buffer to collect all data)
     //Set rate to check ADC input
     mode0Rate = 10;
     mode1Rate = 10; 
@@ -100,11 +102,12 @@ int main(void) {
     exitStateFlag = 0;
     beginRecordingFlag = 0;
     recordingFlag = 0;
+    cyclesSinceRecording = 0;
     
     while(1) {
         if (!startBuffer) {
             switch(mode) {
-                case 0: //Realterm
+                case 0: //Display To Realterm
                     //STATE EXIT LOGIC
                     if(exitStateFlag){
                         mode = 1;
@@ -155,7 +158,9 @@ int main(void) {
                         Disp2String("BEGIN\n");
                         beginRecordingFlag = 0;
                         recordingFlag = 1;
-                        TIMER2 = 1;
+                        
+                        TIMER1 = 1; //begin counting up to ~10 seconds
+                        TIMER2 = 1; //begin sending out adc readings
                     }
                     if(recordingFlag){
                         adcValue = do_ADC();
@@ -165,9 +170,22 @@ int main(void) {
                     break;
             };  
         }               
-        Idle();
+        Idle(); //Processor spends most of its time in Idle
     } 
     return 0;
+}
+
+void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void){
+    //Timer 1 is responsible for putting the microcontroller back to idle after waiting 10 seconds
+    IFS0bits.T1IF = 0; //Clear flag
+    TMR1 = 0; //reset timer
+    cyclesSinceRecording += 1;
+    //Wait until timer1 goes off 4 times to deal with it
+    if(cyclesSinceRecording == 4){
+        cyclesSinceRecording = 0;
+        recordingFlag = 0;
+        TIMER1 = 0;
+    }
 }
 
 void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void){

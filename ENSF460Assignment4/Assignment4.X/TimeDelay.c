@@ -1,21 +1,18 @@
 /*
  * File:   TimeDelay.c
- * Author: Cody Casselman, Keeryn Johnson, Evan Mann
+ * Authors: Cody C, Evan M, Keeryn J
  *
- * Created on September 16, 2024, 4:05 PM
  */
 
 #include "TimeDelay.h"
 #include "clkChange.h"
 #include "xc.h"
 
-#define BUTTON_1 PORTAbits.RA2
-#define BUTTON_2 PORTBbits.RB4
-#define BUTTON_3 PORTAbits.RA4
-#define LED LATBbits.LATB8
+#define TIMER1 T1CONbits.TON
 #define TIMER2 T2CONbits.TON
 #define TIMER3 T3CONbits.TON
 
+uint32_t timer1_prescale = 256;
 uint32_t timer2_prescale = 64;
 uint32_t timer3_prescale = 1;
 uint32_t timer_freq = 8000000;
@@ -38,7 +35,17 @@ void TimerInit() {
     IPC1bits.T2IP = 2;     //Interrupt priority for Timer 2 set to 2.
     IFS0bits.T2IF = 0;     //Clear Timer 2 interrupt flag.
     IEC0bits.T2IE = 1;     //Enable Timer 2 interrupt.
-    //Reset both timers and turn them off
+    //TIMER 1 CONFIG
+    T1CONbits.TCKPS = 3;   //Prescaler for Timer 1 set to 1:64.
+    T1CONbits.TCS = 0;     //Timer 1 clock source is the internal clock (Fcy).
+    T1CONbits.TSIDL = 0;   //Timer 1 continues running in idle mode.
+    IPC0bits.T1IP = 2;     //Interrupt priority for Timer 1 set to 2.
+    IFS0bits.T1IF = 0;     //Clear Timer 1 interrupt flag.
+    IEC0bits.T1IE = 1;     //Enable Timer 1 interrupt.
+    //Reset all timers and turn them off
+    TMR1 = 0;
+    TIMER1 = 0;
+    
     TMR2 = 0;
     TIMER2 = 0;
     
@@ -47,6 +54,10 @@ void TimerInit() {
 }
 
 void delay_ms(uint32_t time_ms, uint8_t timerNum){ //0 <= time_ms <= 986880ms
+    if(timerNum == 1){
+        //Change timer1 PR value
+        PR1 = (uint16_t)calculate_pr(time_ms, timer1_prescale);
+    }
     if(timerNum == 2){
         //Change timer2 PR value
         PR2 = (uint16_t)calculate_pr(time_ms, timer2_prescale);
