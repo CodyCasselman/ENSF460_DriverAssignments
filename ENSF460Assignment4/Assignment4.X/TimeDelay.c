@@ -36,7 +36,7 @@ void TimerInit() {
     IFS0bits.T2IF = 0;     //Clear Timer 2 interrupt flag.
     IEC0bits.T2IE = 1;     //Enable Timer 2 interrupt.
     //TIMER 1 CONFIG
-    T1CONbits.TCKPS = 3;   //Prescaler for Timer 1 set to 1:64.
+    T1CONbits.TCKPS = 3;   //Prescaler for Timer 1 set to 1:256.
     T1CONbits.TCS = 0;     //Timer 1 clock source is the internal clock (Fcy).
     T1CONbits.TSIDL = 0;   //Timer 1 continues running in idle mode.
     IPC0bits.T1IP = 2;     //Interrupt priority for Timer 1 set to 2.
