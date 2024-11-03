@@ -18,7 +18,7 @@
 
 uint32_t timer2_prescale = 64;
 uint32_t timer3_prescale = 1;
-uint32_t timer_freq = 500000;
+uint32_t timer_freq = 8000000;
 uint32_t ms_to_s_factor = 1000;
 
 //INITIALIZE THE TIMERS

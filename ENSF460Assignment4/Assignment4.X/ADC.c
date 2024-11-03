@@ -14,7 +14,7 @@ void ADCInit() {
     AD1CON2bits.VCFG = 0b000; //Select voltage range of ADC 
     AD1CON3bits.ADCS = 0b11111; //Select analog conversion rate 
     AD1CON1bits.SSRC = 0b111; //Sets to auto conversion (Sets based on internal counter)
-    AD1CON3bits.SAMC = 0b11111; //Set the Auto-Sample Time bits (0b11111 = 31Tad)
+    AD1CON3bits.SAMC = 0b00001; //Set the Auto-Sample Time bits (0b11111 = 31Tad)
     AD1CON1bits.FORM = 00; //Sets data output format (Integer)
     AD1CON2bits.SMPI = 0b0000; //Throws interrupt each time it scans
     

@@ -80,17 +80,17 @@ uint16_t PB1History;
 uint16_t PB2History;
 
 int main(void) {
-    newClk(500); //set the clock speed
+    newClk(8); //set the clock speed
     
     // INITIALIZATION OF UART, IO, ADC and TIMERS   
     InitUART2();
     IOInit();
     TimerInit();    
     ADCInit();
-    
+    delay_ms(50, 3);
     //Set rate to check ADC input
-    mode0Rate = 1000;
-    mode1Rate = 500; 
+    mode0Rate = 10;
+    mode1Rate = 10; 
     //PB1 and PB2 have not been interacted with
     PB1History = 0;
     PB2History = 0;
@@ -150,16 +150,16 @@ int main(void) {
                         //change timer delay
                         delay_ms(mode1Rate, 2);
                         TMR2 = 0;
-                        TIMER2 = 1;
                     }
                     if(beginRecordingFlag){
                         Disp2String("BEGIN\n");
                         beginRecordingFlag = 0;
                         recordingFlag = 1;
+                        TIMER2 = 1;
                     }
                     if(recordingFlag){
                         adcValue = do_ADC();
-                        Disp2Hex(adcValue);
+                        Disp2Dec(adcValue);
                         Disp2String("\n");
                     }
                     break;
