@@ -49,12 +49,6 @@ numbers_detected = numbers_detected.split(' \n ')  # split string by \n n store 
 voltages = [float(adcbuf) * resolution for adcbuf in numbers_detected] #Voltage = Buffer Value * Resolution
 ADCBufferValue = [float(adcbuf) for adcbuf in numbers_detected]
 #Creating a DataFrame
-print(numbers_detected[0], numbers_detected[-1])
-print(detection_times[0], detection_times[-1])
-print(len(numbers_detected))
-print(len(voltages))
-print(len(ADCBufferValue))
-print(len(detection_times))
 d = {'Voltage': voltages, 'ADC Buffer Value':ADCBufferValue, 'Time': detection_times}
 
 dataFrame = pd.DataFrame(data= d)
