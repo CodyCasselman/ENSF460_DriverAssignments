@@ -26,8 +26,8 @@
       <itemPath>IOs.c</itemPath>
       <itemPath>TimeDelay.c</itemPath>
       <itemPath>UART2.c</itemPath>
-      <itemPath>Assignment4Main.c</itemPath>
       <itemPath>ADC.c</itemPath>
+      <itemPath>Project_2Main.c</itemPath>
     </logicalFolder>
   </logicalFolder>
   <projectmakefile>Makefile</projectmakefile>
