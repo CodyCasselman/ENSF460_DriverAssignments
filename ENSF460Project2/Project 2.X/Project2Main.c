@@ -56,6 +56,9 @@
 #define TIMER2 T2CONbits.TON
 #define TIMER3 T3CONbits.TON
 
+#define PULSETIMER T1CONbits.TON
+#define BLINKTIMER T2CONbits.TON
+
 #include "xc.h"
 #include "TimeDelay.h"
 #include "IOs.h"
@@ -64,21 +67,31 @@
 #include "ADC.h"
 #include <stdio.h>
 
-uint16_t mode0Rate;
-uint16_t mode1Rate;
+typedef enum{
+    OFF,
+    ON,
+    RECORD,
+    TRANSMIT,
+    BLINK
+}state_t;
 
-uint8_t startBuffer;
-uint8_t mode;
-uint8_t enterStateFlag;
-uint8_t exitStateFlag;
-uint8_t beginRecordingFlag;
-uint8_t recordingFlag;
-uint8_t cyclesSinceRecording;
+typedef enum{
+    BUFFER,
+    BLINKER
+}timer_state_t;
 
-uint16_t adcValue;
 
-uint16_t PB1History;
-uint16_t PB2History;
+state_t machineState;
+state_t returnState;
+timer_state_t timer2State;
+
+uint8_t pb1Click;
+uint8_t pb2Click;
+uint8_t pb3Click;
+uint16_t pb1History;
+uint16_t pb2History;
+uint16_t pb3History;
+
 
 int main(void) {
     newClk(8); //set the clock speed
@@ -88,88 +101,88 @@ int main(void) {
     IOInit();
     TimerInit();    
     ADCInit();
-    delay_ms(50, 3); //set buffer delay to 50ms
-    delay_ms(2550, 1); //set recording timer to 2.55s (Gives a 0.2s buffer to collect all data)
-    //Set rate to check ADC input
-    mode0Rate = 10;
-    mode1Rate = 10; 
-    //PB1 and PB2 have not been interacted with
-    PB1History = 0;
-    PB2History = 0;
     
-    startBuffer = 0;
-    enterStateFlag = 1;
-    exitStateFlag = 0;
-    beginRecordingFlag = 0;
-    recordingFlag = 0;
-    cyclesSinceRecording = 0;
+    //INITIALIZATION OF VARIABLES
+    pb1History = 0;
+    pb2History = 0;
+    pb3History = 0;
     
+    pb1Click = 0;
+    pb2Click = 0;
+    pb3Click = 0;
+    
+    machineState = OFF;
+    returnState = OFF;
     while(1) {
-        if (!startBuffer) {
-            switch(mode) {
-                case 0: //Display To Realterm
-                    //STATE EXIT LOGIC
-                    if(exitStateFlag){
-                        mode = 1;
-                        enterStateFlag = 1;
-                        exitStateFlag = 0;
-                        TIMER2 = 0;
-                        continue;
-                    }
-                    //STATE ENTRY LOGIC
-                    if(enterStateFlag){
-                        enterStateFlag = 0;
-                        Disp2String("\33[2K\r");
-                        Disp2String("MODE 0: \r");
-                        
-                        //Change timer2 config. Turn it on
-                        delay_ms(mode0Rate, 2);
-                        TMR2 = 0;
-                        TIMER2 = 1;
-                    }
-                    
-                    print_stars();
-                    
-                    break;
-                case 1: //Python
-                    //STATE EXIT LOGIC
-                    if(exitStateFlag){
-                        //change state
-                        mode = 0;
-                        //change flag values
-                        enterStateFlag = 1;
-                        exitStateFlag = 0;
-                        beginRecordingFlag = 0;
-                        recordingFlag = 0;
-                        TIMER2 = 0;
-                        continue;
-                    }
-                    //STATE ENTRY LOGIC
-                    if(enterStateFlag){
-                        //print something to the terminal
-                        Disp2String("\33[2K\r");
-                        Disp2String("MODE 1: CLOSE PORT AND TURN ON PYTHON\r");
-                        enterStateFlag = 0;
-                        //change timer delay
-                        delay_ms(mode1Rate, 2);
-                        TMR2 = 0;
-                    }
-                    if(beginRecordingFlag){
-                        Disp2String("BEGIN\n");
-                        beginRecordingFlag = 0;
-                        recordingFlag = 1;
-                        
-                        TIMER1 = 1; //begin counting up to ~10 seconds
-                        TIMER2 = 1; //begin sending out adc readings
-                    }
-                    if(recordingFlag){
-                        adcValue = do_ADC();
-                        Disp2Dec(adcValue);
-                        Disp2String("\n");
-                    }
-                    break;
-            };  
-        }               
+        //Universal Logic
+        switch(machineState){
+            case OFF:
+                //Exit logic:
+                if(pb1Click)
+                {
+                    pb1Click = 0;
+                    machineState = ON;
+                }
+                if(pb2Click)
+                {
+                    pb2Click = 0;
+                    machineState = BLINK;
+                }
+                if(pb3Click){
+                    pb3Click = 0;
+                    machineState = RECORD;
+                }
+                //Entry Logic
+                returnState = ON;
+                
+                //Main logic:
+                
+                
+                
+                break;
+            case ON:
+                //Exit Logic
+                if(pb1Click)
+                {
+                    pb1Click = 0;
+                    machineState = OFF;
+                }
+                if(pb2Click)
+                {
+                    pb2Click = 0;
+                    machineState = BLINK;
+                }
+                if(pb3Click)
+                {
+                    pb3Click = 0;
+                    machineState = RECORD;
+                }
+                
+                //Entry Logic
+                returnState = ON;
+                
+                //Main Logic
+                
+                
+                break;
+            case BLINK:
+                //Flip blink timer status
+                BLINKTIMER ^= 1;
+                //Return to where we came
+                machineState = returnState;
+                break;
+            case RECORD:
+                //Flip Transmit Timer
+                
+                //Return to where we came
+                machineState = returnState;
+                break;
+            case TRANSMIT:
+                
+                //Return to where we came
+                machineState = returnState;
+                break;
+        }
         Idle(); //Processor spends most of its time in Idle
     } 
     return 0;
@@ -178,14 +191,7 @@ int main(void) {
 void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void){
     //Timer 1 is responsible for putting the microcontroller back to idle after waiting 10 seconds
     IFS0bits.T1IF = 0; //Clear flag
-    TMR1 = 0; //reset timer
-    cyclesSinceRecording += 1;
-    //Wait until timer1 goes off 4 times to deal with it
-    if(cyclesSinceRecording == 4){
-        cyclesSinceRecording = 0;
-        recordingFlag = 0;
-        TIMER1 = 0;
-    }
+    
 }
 
 void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void){
@@ -197,51 +203,28 @@ void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void){
     //Timer 3 is our buffer timer
     IFS0bits.T3IF = 0; //Clear flag
     TIMER3 = 0; //Turn timer off
-    startBuffer = 0; //Reset buffer flag
-    //isolate the most recent button states. See if it was on and then off
-    if((PB1History & 0b11) == 0b10)
+    //isolate the most recent button states. Change the flag about whether the button was clicked
+    if((pb1History & 0b11) == 0b10)
     {
-        exitStateFlag = 1; //CHANGE STATE
-        PB1History = 0; //Reset PB1History
+        pb1Click = 1;
+        pb1History = 0;
     }
-    if((PB2History & 0b11) == 0b10)
+    if((pb2History & 0b11) == 0b10)
     {
-        beginRecordingFlag = 1; //Begin recording data for python
-        PB2History = 0; //Reset PB2History
+        pb2Click = 1;
+        pb2History = 0;
+    }
+    if((pb3History & 0b11) == 0b10)
+    {
+        pb3Click = 1;
+        pb3History = 0;
     }
 }
 
 void __attribute__((interrupt, no_auto_psv)) _CNInterrupt(void){
     //CN interrupt should start the buffer and collect inputs
     IFS1bits.CNIF = 0; //Clear flag 
-    //Left shift button history, concatenate with current button value
-    PB1History = (PB1History << 1) | (BUTTON_1 ^ 1);
-    PB2History = (PB2History << 1) | (BUTTON_2 ^ 1);
-    //Start buffer timer and reset timer value
-    startBuffer = 1;
-    TMR3 = 0;
-    TIMER3 = 1;
-}
-
-void print_stars(){
-    adcValue = do_ADC();
-                    
-    //Find star amount and spaces after
-    uint16_t max_stars = 64;
-    uint16_t num_stars = (adcValue + 1) / 16;
-    if (num_stars < 1) { //Lowest reading
-        num_stars = 1;
-    }
-    uint16_t spaces = max_stars - num_stars;
-
-    //Print stars to Realterm, account for previous star line clearing
-    Disp2String("\033[8C");
-    for (uint16_t i = 0; i < num_stars; i++) {
-        Disp2String("*");
-    }
-    Disp2Hex(adcValue); //Potentiometer reading output
-    for (uint16_t j = 0; j < spaces; j++) {
-        Disp2String(" ");
-    }
-    Disp2String("\r");
+    pb1History = (pb1History << 1) | (BUTTON_1 ^ 1);
+    pb2History = (pb2History << 1) | (BUTTON_2 ^ 1);
+    pb3History = (pb3History << 1) | (BUTTON_3 ^ 1);
 }
