@@ -25,12 +25,10 @@ uint16_t do_ADC(void)
 {
     uint16_t ADCvalue ; // 16 bit register used to hold ADC converted digital output ADC1BUF0
     
-    
     AD1CON1bits.ADON = 1; //Turns ADC on
     AD1CON1bits.SAMP = 1; //Start Sampling, Conversion starts automatically after SSRC and SAMC settings
     //Poll DONE bit until the sampling is finished
-    while(AD1CON1bits.DONE==0) 
-        {}
+    while(AD1CON1bits.DONE==0) {}
     ADCvalue = ADC1BUF0; // ADC output is stored in ADC1BUF0 as this point
     AD1CON1bits.SAMP = 0; //Stop sampling
     AD1CON1bits.ADON = 0; //Turn off ADC, ADC value stored in ADC1BUF0;

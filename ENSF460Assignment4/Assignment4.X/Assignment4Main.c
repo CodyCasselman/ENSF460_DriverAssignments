@@ -127,7 +127,7 @@ int main(void) {
                         TMR2 = 0;
                         TIMER2 = 1;
                     }
-                    
+                    LED = 1;
                     print_stars();
                     
                     break;

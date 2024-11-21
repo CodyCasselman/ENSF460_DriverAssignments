@@ -64,21 +64,29 @@
 #include "ADC.h"
 #include <stdio.h>
 
-uint16_t mode0Rate;
-uint16_t mode1Rate;
+//Define states
+typedef enum { OFF, ON } State;
+State mode = OFF;  //Initial state is off
 
+uint16_t readingRate; //Rate of reading analog
+
+//State conversions and reading analog flags
 uint8_t startBuffer;
-uint8_t mode;
-uint8_t enterStateFlag;
-uint8_t exitStateFlag;
-uint8_t beginRecordingFlag;
-uint8_t recordingFlag;
+uint8_t PB2ActionFlag, PB3ActionFlag;
+uint8_t flashing, brightnessFlashing;
+uint8_t enterStateFlag, exitStateFlag;
+uint8_t beginRecordingFlag, recordingFlag;
 uint8_t cyclesSinceRecording;
 
-uint16_t adcValue;
+uint16_t adcValue; //Reading from analog input
 
-uint16_t PB1History;
-uint16_t PB2History;
+uint16_t PB1History, PB2History, PB3History; //Previous states of buttons
+
+uint16_t cycleTime; //Time for on/off durations
+uint16_t brightness; //Brightness wanted for PWM
+uint16_t highTime; //Percentage on in PWM
+uint16_t lowTime; //Percentage off in PWM
+uint8_t ledState; //State of LED for PWM flipping
 
 int main(void) {
     newClk(8); //set the clock speed
@@ -88,90 +96,154 @@ int main(void) {
     IOInit();
     TimerInit();    
     ADCInit();
-    delay_ms(50, 3); //set buffer delay to 50ms
-    delay_ms(2550, 1); //set recording timer to 2.55s (Gives a 0.2s buffer to collect all data)
-    //Set rate to check ADC input
-    mode0Rate = 10;
-    mode1Rate = 10; 
-    //PB1 and PB2 have not been interacted with
+    
+    //Default analog read rate
+    readingRate = 10;
+    
+    delay_ms(50, 3); //50ms buffer delay
+    delay_ms(readingRate, 2); //Default to reading rate for analog
+    delay_ms(255, 1); //set recording timer to 0.255s (Gives a 0.02s buffer to collect all data)
+    
+    //Buttons have not been interacted with
     PB1History = 0;
     PB2History = 0;
+    PB3History = 0;
     
     startBuffer = 0;
-    enterStateFlag = 1;
+    brightnessFlashing = 0; //Controls the PWM flashing
+    flashing = 0; //Controls the 0.5s interval flashing
+    PB2ActionFlag = 0;
+    PB3ActionFlag = 0;
+    enterStateFlag = 1; //Enter a state initially
     exitStateFlag = 0;
     beginRecordingFlag = 0;
     recordingFlag = 0;
     cyclesSinceRecording = 0;
     
+    cycleTime = 1000; //Pulse period is overall time section
+    brightness = 50;
+    ledState = 0; //0 for off
+    LED = 0;
+    
     while(1) {
-        if (!startBuffer) {
+        if(!startBuffer) {
             switch(mode) {
-                case 0: //Display To Realterm
+                case ON:
                     //STATE EXIT LOGIC
-                    if(exitStateFlag){
-                        mode = 1;
+                    if (exitStateFlag){
+                        mode = OFF;
                         enterStateFlag = 1;
                         exitStateFlag = 0;
                         TIMER2 = 0;
                         continue;
+                        //
                     }
-                    //STATE ENTRY LOGIC
-                    if(enterStateFlag){
-                        enterStateFlag = 0;
-                        Disp2String("\33[2K\r");
-                        Disp2String("MODE 0: \r");
-                        
-                        //Change timer2 config. Turn it on
-                        delay_ms(mode0Rate, 2);
-                        TMR2 = 0;
-                        TIMER2 = 1;
+                    //BELOW LOGIC ALLOWS FOR CONSTANT BRIGHTNESS CHANGING
+
+                    //Map the ADC value (0-1023) to brightness percentage (0-100)
+                    adcValue = do_ADC();
+                    brightness = (adcValue * 100) / 1023;
+                    
+                    //Calculate highTime and lowTime based on brightness
+                    highTime = (brightness * cycleTime) / 100;
+                    lowTime = cycleTime - highTime;
+
+                    //Blink the LED at the calculated times
+                    if (!ledState) {
+                        delay_ms(highTime, 2);  // LED ON for highTime
+                    } else {
+                        delay_ms(lowTime, 2);   // LED OFF for lowTime
                     }
                     
-                    print_stars();
+                    //BELOW LOGIC CONTROLS PB2 INPUTS
                     
-                    break;
-                case 1: //Python
-                    //STATE EXIT LOGIC
-                    if(exitStateFlag){
-                        //change state
-                        mode = 0;
-                        //change flag values
-                        enterStateFlag = 1;
-                        exitStateFlag = 0;
-                        beginRecordingFlag = 0;
-                        recordingFlag = 0;
-                        TIMER2 = 0;
-                        continue;
+                    //PB2 pressed, flash for 0.5s intervals
+                    if (PB2ActionFlag) {
+                        flashing = 1; //Allow LED changing in TMR2
+                        LED = 1; //Start with LED on
                     }
-                    //STATE ENTRY LOGIC
-                    if(enterStateFlag){
-                        //print something to the terminal
-                        Disp2String("\33[2K\r");
-                        Disp2String("MODE 1: CLOSE PORT AND TURN ON PYTHON\r");
-                        enterStateFlag = 0;
-                        //change timer delay
-                        delay_ms(mode1Rate, 2);
-                        TMR2 = 0;
+                    
+                    //PB2 pressed again, stop 0.5s flashes
+                    if (!PB2ActionFlag && flashing) {
+                        flashing = 0;
+                        LED = 1; //Back to on for PWM
                     }
-                    if(beginRecordingFlag){
+
+                    //BELOW LOGIC CONTROLS PB3 INPUTS
+                    
+                    //PB3 pressed, begin reading
+                    if(beginRecordingFlag && PB3ActionFlag){
                         Disp2String("BEGIN\n");
                         beginRecordingFlag = 0;
                         recordingFlag = 1;
                         
-                        TIMER1 = 1; //begin counting up to ~10 seconds
-                        TIMER2 = 1; //begin sending out adc readings
+                        TIMER1 = 1; //begin counting up to ~1 seconds
+                        TMR2 = 0; //Reset TMR2 for sending out adc readings
                     }
-                    if(recordingFlag){
+                    if(recordingFlag && PB3ActionFlag){
                         adcValue = do_ADC();
                         Disp2Dec(adcValue);
                         Disp2String("\n");
                     }
+                    
+                    //STATE ENTRY LOGIC
+                    if (enterStateFlag){
+                        enterStateFlag = 0;
+                        LED = 1; //Start with LED on
+                        TMR2 = 0;
+                        TIMER2 = 1; //Start timer for PWM, always going for PWM
+                        brightnessFlashing = 1; //TMR2 PWM control on
+                        //Turn on LED, reset TMR2, and start TIMER2 for PWM
+                    }
+
                     break;
-            };  
-        }               
-        Idle(); //Processor spends most of its time in Idle
-    } 
+                case OFF:
+                    //STATE EXIT LOGIC
+                    if (exitStateFlag){
+                        mode = ON;
+                        enterStateFlag = 1;
+                        exitStateFlag = 0;
+                        TIMER2 = 0;
+                        continue;
+                        //Stop flashing timer on transition
+                    }
+                    
+                    //BELOW LOGIC CONTROLS PB2 INPUTS
+                    
+                    //PB2 pressed
+                    if (PB2ActionFlag) {
+                        flashing = 1; //Allow LED changing in TMR2
+                        LED = 1; //Start with LED on
+                        TIMER2 = 1; //Start flashing timer
+                    }
+                    
+                    //PB2 pressed again
+                    if (!PB2ActionFlag && flashing) {
+                        flashing = 0;
+                        LED = 0;
+                        TIMER2 = 0;
+                        TMR2 = 0;
+                    }
+
+                    Idle(); //Default to Idle if off
+                    
+                    //STATE ENTRY LOGIC
+                    if (enterStateFlag){
+                        enterStateFlag = 0;
+                        LED = 0; //Start with LED off
+                        TMR2 = 0;
+                        delay_ms(500, 2); //0.5s flashing
+                        brightnessFlashing = 0; //TMR2 PWM control off
+                        //Turn off LED, reset TMR2 and stop PWM and 0.5s flashing
+                    }   
+
+                    break;
+            }
+        }
+        
+        //Idle(); //Processor spends most of its time in Idle
+    }
+     
     return 0;
 }
 
@@ -188,9 +260,15 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void){
     }
 }
 
-void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void){
-    //Timer 2 is responsible for waking the microcontroller to read and output adc input
+void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void){ //NEED TO CHANGE WHATS STORED IN FLASHING
+    //Timer 2 is our flash timer
     IFS0bits.T2IF = 0; //Clear flag
+    if (brightnessFlashing) { //If timer is used for PWM flashing
+        ledState ^= 1; //Flip for PWM
+    }
+    if (flashing) { //If timer is used for light 0.5s interval flashing
+        LED ^= 1;
+    }
 }
 
 void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void){
@@ -206,8 +284,14 @@ void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void){
     }
     if((PB2History & 0b11) == 0b10)
     {
-        beginRecordingFlag = 1; //Begin recording data for python
+        PB2ActionFlag ^= 1; //Activate or deactivate PB2 Logic
         PB2History = 0; //Reset PB2History
+    }
+    if((PB3History & 0b11) == 0b10)
+    {
+        PB3ActionFlag ^= 1;//Activate or deactivate PB3 Logic
+        beginRecordingFlag = 1; //Start reading on PB3 press
+        PB3History = 0; //Reset PB2History
     }
 }
 
@@ -217,31 +301,9 @@ void __attribute__((interrupt, no_auto_psv)) _CNInterrupt(void){
     //Left shift button history, concatenate with current button value
     PB1History = (PB1History << 1) | (BUTTON_1 ^ 1);
     PB2History = (PB2History << 1) | (BUTTON_2 ^ 1);
+    PB3History = (PB3History << 1) | (BUTTON_3 ^ 1);
     //Start buffer timer and reset timer value
     startBuffer = 1;
     TMR3 = 0;
     TIMER3 = 1;
-}
-
-void print_stars(){
-    adcValue = do_ADC();
-                    
-    //Find star amount and spaces after
-    uint16_t max_stars = 64;
-    uint16_t num_stars = (adcValue + 1) / 16;
-    if (num_stars < 1) { //Lowest reading
-        num_stars = 1;
-    }
-    uint16_t spaces = max_stars - num_stars;
-
-    //Print stars to Realterm, account for previous star line clearing
-    Disp2String("\033[8C");
-    for (uint16_t i = 0; i < num_stars; i++) {
-        Disp2String("*");
-    }
-    Disp2Hex(adcValue); //Potentiometer reading output
-    for (uint16_t j = 0; j < spaces; j++) {
-        Disp2String(" ");
-    }
-    Disp2String("\r");
 }

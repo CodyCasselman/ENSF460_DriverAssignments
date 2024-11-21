@@ -31,10 +31,9 @@ void IOInit() {
     IEC1bits.CNIE = 1;
     //Set the direction of the potentiometer to be input
     TRISAbits.TRISA3 = 1; 
+    //Set LED direction to be an output
+    TRISBbits.TRISB8 = 0;
 }
-
-
-
 
 uint8_t IOCheck(){
     uint8_t PB_status;

@@ -16,7 +16,7 @@ uint32_t timer1_prescale = 256;
 uint32_t timer2_prescale = 64;
 uint32_t timer3_prescale = 1;
 uint32_t timer_freq = 8000000;
-uint32_t ms_to_s_factor = 1000;
+uint32_t ns_to_s_factor = 1000000;
 
 //INITIALIZE THE TIMERS
 void TimerInit() {
@@ -70,7 +70,7 @@ void delay_ms(uint32_t time_ms, uint8_t timerNum){ //0 <= time_ms <= 986880ms
 
 uint32_t calculate_pr(uint32_t time_ms, uint32_t prescale)
 {   
-    return ((uint64_t)time_ms * (uint64_t)timer_freq / (uint64_t)(ms_to_s_factor * 2 * prescale));
+    return ((uint64_t)time_ms * (uint64_t)timer_freq / (uint64_t)(ns_to_s_factor * 2 * prescale));
 }
 
 
