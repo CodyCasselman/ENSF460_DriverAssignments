@@ -16,7 +16,7 @@ uint32_t timer1_prescale = 256;
 uint32_t timer2_prescale = 64;
 uint32_t timer3_prescale = 1;
 uint32_t timer_freq = 8000000;
-uint32_t ns_to_s_factor = 1000000;
+uint32_t us_to_s_factor = 1000000;
 
 //INITIALIZE THE TIMERS
 void TimerInit() {
@@ -53,24 +53,24 @@ void TimerInit() {
     TIMER3 = 0;
 }
 
-void delay_ms(uint32_t time_ms, uint8_t timerNum){ //0 <= time_ms <= 986880ms
+void set_timerX_us(uint32_t time_us, uint8_t timerNum){ //0 <= time_ms <= 986880ms
     if(timerNum == 1){
         //Change timer1 PR value
-        PR1 = (uint16_t)calculate_pr(time_ms, timer1_prescale);
+        PR1 = (uint16_t)calculate_pr(time_us, timer1_prescale);
     }
     if(timerNum == 2){
         //Change timer2 PR value
-        PR2 = (uint16_t)calculate_pr(time_ms, timer2_prescale);
+        PR2 = (uint16_t)time_us / 16;
     }
     else if(timerNum == 3){
         //Change timer3 PR value
-        PR3 = (uint16_t)calculate_pr(time_ms, timer3_prescale);
+        PR3 = (uint16_t)calculate_pr(time_us, timer3_prescale);
     }
 }
 
-uint32_t calculate_pr(uint32_t time_ms, uint32_t prescale)
+uint32_t calculate_pr(uint32_t time_us, uint32_t prescale)
 {   
-    return ((uint64_t)time_ms * (uint64_t)timer_freq / (uint64_t)(ns_to_s_factor * 2 * prescale));
+    return ((uint64_t)time_us * (uint64_t)timer_freq / (uint64_t)(us_to_s_factor * 2 * prescale));
 }
 
 

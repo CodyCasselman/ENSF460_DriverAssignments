@@ -17,14 +17,22 @@
 
 void IOInit() {
     /* Let's set up some I/O */
-    //Set the direction of RB4 (PB2) to input
-    TRISBbits.TRISB4 = 1;
-    CNPU1bits.CN1PUE = 1; //Enable the pull-up
-    CNEN1bits.CN1IE = 1; //Enable the interrupt
     //Set the direction of RA2 (PB1) to input
     TRISAbits.TRISA2 = 1;
     CNPU2bits.CN30PUE = 1; //Enable the pull-up
     CNEN2bits.CN30IE = 1; //Enable the CN interrupt
+    
+    //Set the direction of RB4 (PB2) to input
+    TRISBbits.TRISB4 = 1;
+    CNPU1bits.CN1PUE = 1; //Enable the pull-up
+    CNEN1bits.CN1IE = 1; //Enable the interrupt
+    
+    //Set the direction of RA4 (PB3) to input
+    TRISAbits.TRISA4 = 1;
+    CNPU1bits.CN0PUE = 1; //Enable the pull-up
+    CNEN1bits.CN0IE = 1; //Enable the interrupt
+    
+
     //Enable CN Interrupts for buttons and set their priority
     IPC4bits.CNIP = 6;
     IFS1bits.CNIF = 0;

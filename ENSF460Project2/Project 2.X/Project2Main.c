@@ -73,20 +73,22 @@ uint16_t readingRate; //Rate of reading analog
 //State conversions and reading analog flags
 uint8_t startBuffer;
 uint8_t PB2ActionFlag, PB3ActionFlag;
-uint8_t flashing, brightnessFlashing;
-uint8_t enterStateFlag, exitStateFlag;
+uint8_t blinking, brightnessFlashing;
+uint8_t enterStateFlag, changeMode;
 uint8_t beginRecordingFlag, recordingFlag;
 uint8_t cyclesSinceRecording;
 
-uint16_t adcValue; //Reading from analog input
+uint32_t adcValue; //Reading from analog input
 
 uint16_t PB1History, PB2History, PB3History; //Previous states of buttons
 
 uint16_t cycleTime; //Time for on/off durations
-uint16_t brightness; //Brightness wanted for PWM
-uint16_t highTime; //Percentage on in PWM
-uint16_t lowTime; //Percentage off in PWM
-uint8_t ledState; //State of LED for PWM flipping
+uint32_t intensity; //Brightness wanted for PWM
+uint32_t highTime; //Percentage on in PWM
+uint32_t lowTime; //Percentage off in PWM
+uint8_t led_high; //State of LED for PWM flipping
+uint32_t blink_time, recording_time, seconds_spent_recording;
+uint8_t adc_flag = 0;
 
 int main(void) {
     newClk(8); //set the clock speed
@@ -100,9 +102,9 @@ int main(void) {
     //Default analog read rate
     readingRate = 10;
     
-    delay_ms(50, 3); //50ms buffer delay
-    delay_ms(readingRate, 2); //Default to reading rate for analog
-    delay_ms(255, 1); //set recording timer to 0.255s (Gives a 0.02s buffer to collect all data)
+    //delay_us(50, 3); //50ms buffer delay
+    //delay_us(readingRate, 2); //Default to reading rate for analog
+    //delay_us(255, 1); //set recording timer to 0.255s (Gives a 0.02s buffer to collect all data)
     
     //Buttons have not been interacted with
     PB1History = 0;
@@ -111,20 +113,23 @@ int main(void) {
     
     startBuffer = 0;
     brightnessFlashing = 0; //Controls the PWM flashing
-    flashing = 0; //Controls the 0.5s interval flashing
+    blinking = 0; //Controls the 0.5s interval flashing
     PB2ActionFlag = 0;
     PB3ActionFlag = 0;
     enterStateFlag = 1; //Enter a state initially
-    exitStateFlag = 0;
-    beginRecordingFlag = 0;
+    changeMode = 0;
     recordingFlag = 0;
+    recording_time = 0;
+    seconds_spent_recording = 0;
     cyclesSinceRecording = 0;
     
-    cycleTime = 1000; //Pulse period is overall time section
-    brightness = 50;
-    ledState = 0; //0 for off
+    cycleTime = 10000; //Pulse period is overall time section
+    intensity = 50;
+    led_high = 0; //0 for off
+    blink_time = 0;
     LED = 0;
-    
+    TIMER2 = 0;
+    /*
     while(1) {
         if(!startBuffer) {
             switch(mode) {
@@ -141,22 +146,44 @@ int main(void) {
                     //BELOW LOGIC ALLOWS FOR CONSTANT BRIGHTNESS CHANGING
 
                     //Map the ADC value (0-1023) to brightness percentage (0-100)
+                    Disp2String("\r");
+                    Disp2String("AdcValue: ");
                     adcValue = do_ADC();
-                    brightness = (adcValue * 100) / 1023;
+                    Disp2Dec(adcValue);
+                    Disp2String("  Brightness: ");
                     
+                    brightness = (adcValue * 100) / 1023;
+                    Disp2Dec(brightness);
                     //Calculate highTime and lowTime based on brightness
                     highTime = (brightness * cycleTime) / 100;
                     lowTime = cycleTime - highTime;
-
+                    Disp2String("  High Time: ");
+                    Disp2Dec(highTime);
+                    Disp2String("  Low Time: ");
+                    
+                    Disp2Dec(lowTime);
+                    /*
+                    Disp2String("\r\n");
+                    Disp2String("LED state: ");
+                    Disp2Dec(ledState);
+                    Disp2String("   LED Value: ");
+                    Disp2Dec(LED);
+                    Disp2String("\033[1A");
+                    
+       
                     //Blink the LED at the calculated times
                     if (!ledState) {
                         delay_ms(highTime, 2);  // LED ON for highTime
+                        LED = 1;
+                        ledState = 1;
                     } else {
                         delay_ms(lowTime, 2);   // LED OFF for lowTime
+                        LED = 0;
+                        ledState = 0;
                     }
                     
                     //BELOW LOGIC CONTROLS PB2 INPUTS
-                    
+                    /*
                     //PB2 pressed, flash for 0.5s intervals
                     if (PB2ActionFlag) {
                         flashing = 1; //Allow LED changing in TMR2
@@ -192,8 +219,13 @@ int main(void) {
                         LED = 1; //Start with LED on
                         TMR2 = 0;
                         TIMER2 = 1; //Start timer for PWM, always going for PWM
-                        brightnessFlashing = 1; //TMR2 PWM control on
+                        //brightnessFlashing = 1; //TMR2 PWM control on
                         //Turn on LED, reset TMR2, and start TIMER2 for PWM
+                        adcValue = do_ADC();
+                        brightness = (adcValue * 100) / 1023;
+                        highTime = (brightness * cycleTime) / 100;
+                        delay_ms(highTime, 2);  // LED ON for highTime
+                        ledState = 1;
                     }
 
                     break;
@@ -209,7 +241,7 @@ int main(void) {
                     }
                     
                     //BELOW LOGIC CONTROLS PB2 INPUTS
-                    
+                    /*
                     //PB2 pressed
                     if (PB2ActionFlag) {
                         flashing = 1; //Allow LED changing in TMR2
@@ -224,8 +256,8 @@ int main(void) {
                         TIMER2 = 0;
                         TMR2 = 0;
                     }
-
-                    Idle(); //Default to Idle if off
+                     
+                    //Idle(); //Default to Idle if off
                     
                     //STATE ENTRY LOGIC
                     if (enterStateFlag){
@@ -241,33 +273,133 @@ int main(void) {
             }
         }
         
-        //Idle(); //Processor spends most of its time in Idle
+        Idle(); //Processor spends most of its time in Idle
     }
-     
+    */
+    
+    TIMER1 = 0;
+    set_timerX_us(10000, 1);
+    set_timerX_us(cycleTime, 2);
+    set_timerX_us(100000, 3);
+    while (1) {
+        //Map the ADC value (0-1023) to brightness percentage (0-100)
+        
+        switch (mode) {
+            case ON:
+                TIMER1 = 1;
+                TIMER2 = 1;
+                if (adc_flag) {
+
+                    adc_flag = 0;
+                    adcValue = do_ADC();
+                    intensity = (adcValue * 100) / 1023;
+                    if (intensity >= 100)
+                        intensity = 99;
+                    if (intensity <= 2)
+                        intensity = 0;
+                    highTime = (intensity * cycleTime) / 100;
+                    lowTime = cycleTime - highTime;
+                    if (recordingFlag) {
+                        Disp2String("\rIntensity: "); 
+                        Disp2Dec(intensity);
+                        Disp2String("   ADC value: "); 
+                        Disp2Dec(adcValue);
+                        Disp2String("\n"); 
+                    }
+                }
+                
+                if (changeMode)
+                {
+                    changeMode = 0;
+                    mode = OFF;
+                    continue;
+                }
+                break;
+                
+            case OFF:
+                
+                
+                if (blinking)   //If off, but blinking is turned on, the timers should be on
+                {
+                    TIMER1 = 1;
+                    TIMER2 = 1;
+                    PR2 = (uint16_t)(500000 / 16);
+                } else {        //If off, and blinking is off, both timers should also be off
+                    TIMER1 = 0;
+                    TIMER2 = 0;
+                    TMR2 = 0;
+                    LED = 0;
+                }
+                
+                if (changeMode)
+                {
+                    changeMode = 0;
+                    mode = ON;
+                    continue;
+                }
+                break;
+        }
+        Idle();
+    }
     return 0;
 }
 
 void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void){
-    //Timer 1 is responsible for putting the microcontroller back to idle after waiting 10 seconds
     IFS0bits.T1IF = 0; //Clear flag
-    TMR1 = 0; //reset timer
-    cyclesSinceRecording += 1;
-    //Wait until timer1 goes off 4 times to deal with it
-    if(cyclesSinceRecording == 4){
-        cyclesSinceRecording = 0;
-        recordingFlag = 0;
-        TIMER1 = 0;
+    if (recordingFlag)
+    {
+        recording_time += 10000;
+        if (recording_time > 1000000) {
+            seconds_spent_recording += 1;
+            recording_time = 0;
+        }
+        
+        if (seconds_spent_recording > 59){
+            recordingFlag = 0;
+            seconds_spent_recording = 0;
+        }
     }
+    
+    if (blinking)
+        blink_time += 10000;
+    
+    
+    adc_flag = 1;
 }
 
-void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void){ //NEED TO CHANGE WHATS STORED IN FLASHING
+void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void){ 
     //Timer 2 is our flash timer
     IFS0bits.T2IF = 0; //Clear flag
-    if (brightnessFlashing) { //If timer is used for PWM flashing
-        ledState ^= 1; //Flip for PWM
-    }
-    if (flashing) { //If timer is used for light 0.5s interval flashing
+    led_high ^= 1;
+    
+    if (mode == OFF && blinking) 
         LED ^= 1;
+        
+    //If the blinking is turned off or if time has reached above 500000 micro seconds (half a second)
+    //Allow the led to glow at the right brightness 
+    if (mode == ON) {
+        if (blink_time > 500000 || blinking == 0) 
+        {
+            if (intensity == 0) LED = 0;    //LED is off if at minimum brightness
+            else if (intensity == 99) LED = 1;    //LED is on if at maximum brightness
+
+            //If brightness is between 1 and 99 then high and low time is used
+            else if (!led_high) {       
+                LED = 1;
+                PR2 = (uint16_t)highTime / 16;
+            } else {
+                LED = 0;
+                PR2 = (uint16_t)lowTime / 16;
+            }
+
+            if (blink_time > 1000000){ //If the full 1 second cycle of the blink has passed reset it to zero
+                blink_time = 0;
+                LED = 0;
+            }
+        } else {
+            LED = 0;
+            //intensity = 0;
+        }
     }
 }
 
@@ -279,18 +411,19 @@ void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void){
     //isolate the most recent button states. See if it was on and then off
     if((PB1History & 0b11) == 0b10)
     {
-        exitStateFlag = 1; //CHANGE STATE
+        changeMode = 1; //CHANGE STATE
         PB1History = 0; //Reset PB1History
     }
     if((PB2History & 0b11) == 0b10)
     {
-        PB2ActionFlag ^= 1; //Activate or deactivate PB2 Logic
+        blinking ^= 1; //Activate or deactivate blinking
         PB2History = 0; //Reset PB2History
     }
     if((PB3History & 0b11) == 0b10)
     {
-        PB3ActionFlag ^= 1;//Activate or deactivate PB3 Logic
-        beginRecordingFlag = 1; //Start reading on PB3 press
+        if (mode == ON) {
+            recordingFlag = 1; //Start reading on PB3 press        
+        }
         PB3History = 0; //Reset PB2History
     }
 }
