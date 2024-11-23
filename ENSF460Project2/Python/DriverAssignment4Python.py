@@ -9,13 +9,13 @@ serial_port = serial.Serial(port= "COM3", baudrate = 9600, bytesize = 8, timeout
 #FLAGS AND INSTANTIATIONS
 begin_detecting = False         #flag to know whether to begin recording ADC values
 start_time = 0
-read_time = 30                  #amount of seconds to read the ADC for
+read_time = 60                  #amount of seconds to read the ADC for
 detection_times = []            #timestamps of when numbers were recorded
 adcValues_detected = ''         #string which holds all the values written from ADC
 intensityValues_detected = ''   #string which holds all the intensity values
 end_loop = False
 
-print("Press PB2 When Ready to Record")
+print("Press PB3 When Ready to Record. Press it again, or PB1 to stop")
 while not end_loop:
     #Continuously read things coming in from UART. The program will only "activate" when is see BEGIN
     single_line = ''
@@ -33,6 +33,11 @@ while not end_loop:
             break
         #reads uint16_t nums as single bytes till \n n stores in string
         intensity_and_adcValue = serial_port.readline() 
+        if (intensity_and_adcValue == b"\x00END\n"):    #If end is sent over UART when repressing PB3 or if it switches to off mode, stop recording
+            end_loop = True
+            print("Recording interupted")
+            break
+
         if ((intensity_and_adcValue != b' \n') and (intensity_and_adcValue != b'\n')) : #removes any '\n' without num captures
             intensityValue = intensity_and_adcValue.split(b'\t')[0] #Read the intensity value on the left side of the tab its sent with
             adcValue = intensity_and_adcValue.split(b'\t')[1]       #Read the ADC value on the right side of the tab its sent with
@@ -56,9 +61,6 @@ adcValues_detected = adcValues_detected.replace('\x00','')  # \x00 seems to be s
 adcValues_detected = adcValues_detected.strip()             # remove unwanted chars and spaces 
 adcValues_detected = adcValues_detected.split(' \n ')       # split string by \n n store in list
 
-print(len(adcValues_detected))
-print(len(intensityValues_detected))
-print(len(detection_times))
 
 #Casting our list of strings into their values
 intensities = [float(buf) for buf in intensityValues_detected] 

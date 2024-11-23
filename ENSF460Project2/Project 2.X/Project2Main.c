@@ -70,7 +70,7 @@ State mode = OFF;  //Initial state is off
 
 uint8_t blinking;   //Whether the led should be blinking
 uint8_t enterStateFlag, changeMode; //A flag to enter a state once, and a flag for when to change modes
-uint8_t beginRecordingFlag, recordingFlag;  //A flag for when recording begins, and if it is currently recording
+uint8_t beginRecordingFlag, recordingFlag, endRecordingFlag;  //A flag for when recording begins, ends and if it is currently recording
 
 //Counters for how long a blink has been going for...
 //how long the system has been recording...
@@ -112,6 +112,7 @@ int main(void) {
     recording_time = 0;
     seconds_spent_recording = 0;
     beginRecordingFlag = 0;
+    endRecordingFlag = 1;
     cycleTime = 10000; //Pulse period is overall time section (In micro seconds)
     intensity = 50;
     led_high = 0; //Since the LED starts off
@@ -147,6 +148,7 @@ int main(void) {
                     if (recordingFlag) {            //If currently recording...
                         if (!beginRecordingFlag)    
                         {
+                            endRecordingFlag = 0;
                             beginRecordingFlag = 1;
                             Disp2String("BEGIN\n"); //Send begin if it just start to trigger the python script
                         }
@@ -154,10 +156,15 @@ int main(void) {
                         Disp2String("\t"); 
                         Disp2Dec(adcValue);
                         Disp2String("\n");          //Send a new line to end the sequence and for python to know the end of the line
+                    } else if (!endRecordingFlag)
+                    {
+                        endRecordingFlag = 1;
+                        Disp2String("END\n"); //Send begin if it just start to trigger the python script
                     }
+                    
                 }
                 
-                if (changeMode)     //If we should leave this mode upon PB1 being pressed change to mode = OFF
+                if (changeMode && endRecordingFlag)     //If we should leave this mode upon PB1 being pressed change to mode = OFF. If the recording hasn't ended yet, don't leave
                 {
                     changeMode = 0;
                     mode = OFF;
@@ -205,11 +212,16 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void){
         }
         
         //Once 30 seconds have passed turn off recording
-        if (seconds_spent_recording > 29){
+        if (seconds_spent_recording > 59){
             recordingFlag = 0;
             beginRecordingFlag = 0;
+            recording_time = 0;
             seconds_spent_recording = 0;
         }
+    } else {
+        beginRecordingFlag = 0;
+        recording_time = 0;
+        seconds_spent_recording = 0;
     }
     
     //Calculate time spent blinking
@@ -265,8 +277,9 @@ void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void){
     //isolate the most recent button states. See if it was on and then off
     if((PB1History & 0b11) == 0b10)
     {
-        if (!recordingFlag)
-            changeMode = 1; //CHANGE STATE
+        changeMode = 1; //CHANGE STATE
+        if (recordingFlag)  //If currently recording, stop
+            recordingFlag = 0;
         PB1History = 0; //Reset PB1History
     }
     if((PB2History & 0b11) == 0b10)
@@ -277,7 +290,7 @@ void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void){
     if((PB3History & 0b11) == 0b10)
     {
         if (mode == ON) {
-            recordingFlag = 1; //Start reading on PB3 press        
+            recordingFlag ^= 1; //Start or stop reading on PB3 press        
         }
         PB3History = 0; //Reset PB2History
     }
