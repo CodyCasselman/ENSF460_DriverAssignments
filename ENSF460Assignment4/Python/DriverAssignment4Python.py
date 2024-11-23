@@ -84,6 +84,3 @@ print(dataFrame)
 
 
 fig.show()
-
-
-

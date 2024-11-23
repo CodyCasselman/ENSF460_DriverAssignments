@@ -56,7 +56,7 @@ void TimerInit() {
 void set_timerX_us(uint32_t time_us, uint8_t timerNum){ //0 <= time_ms <= 986880ms
     if(timerNum == 1){
         //Change timer1 PR value
-        PR1 = (uint16_t)calculate_pr(time_us, timer1_prescale);
+        PR1 = (uint16_t)time_us / 64;
     }
     if(timerNum == 2){
         //Change timer2 PR value
@@ -64,7 +64,7 @@ void set_timerX_us(uint32_t time_us, uint8_t timerNum){ //0 <= time_ms <= 986880
     }
     else if(timerNum == 3){
         //Change timer3 PR value
-        PR3 = (uint16_t)calculate_pr(time_us, timer3_prescale);
+        PR3 = (uint16_t)time_us * 4;
     }
 }
 
