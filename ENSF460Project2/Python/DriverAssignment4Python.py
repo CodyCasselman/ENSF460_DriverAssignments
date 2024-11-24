@@ -20,10 +20,10 @@ def readUART():
     adcValues_detected = ''         #string which holds all the values written from ADC
     intensityValues_detected = ''   #string which holds all the intensity values
     end_loop = False
-
+    serial_port = serial.Serial(port= "COM3", baudrate = 9600, bytesize = 8, timeout =2, stopbits = serial.STOPBITS_ONE)
     while not end_loop:
         #open up a serial port. Set the baud rate to 9600 and for it to read from port 3
-        serial_port = serial.Serial(port= "COM3", baudrate = 9600, bytesize = 8, timeout =2, stopbits = serial.STOPBITS_ONE)
+        
         #Continuously read things coming in from UART. The program will only "activate" when is see BEGIN
         single_line = ''
         single_line = serial_port.readline()
