@@ -1,5 +1,5 @@
 /*
- * File:   Assignment4Main.c
+ * File:    Project2Main.c
  * Authors: Cody C, Evan M, Keeryn J
  *
  */
@@ -81,10 +81,10 @@ uint32_t adcValue; //Reading from analog input
 
 uint16_t PB1History, PB2History, PB3History; //Previous states of buttons
 
-uint16_t cycleTime; //Time for on/off durations to dim the LED
+uint16_t cycleTime; //Time for total on/off cycle to dim the LED
 uint32_t intensity; //Brightness wanted for PWM
-uint32_t highTime; //Percentage on in PWM
-uint32_t lowTime; //Percentage off in PWM
+uint32_t highTime; //Percentage of time on in PWM
+uint32_t lowTime; //Percentage of time off in PWM
 uint8_t led_high; //State of LED for PWM flipping
 
 uint8_t adc_flag = 0; //Flag for when to take an ADC input. Slows down polling time
@@ -113,8 +113,8 @@ int main(void) {
     seconds_spent_recording = 0;
     beginRecordingFlag = 0;
     endRecordingFlag = 1;
-    cycleTime = 10000; //Pulse period is overall time section (In micro seconds)
-    intensity = 50;
+    cycleTime = 10000; //Pulse period is overall time section (In micro seconds) (0.01s)
+    intensity = 50; 
     led_high = 0; //Since the LED starts off
     blink_time = 0;
     LED = 0;
@@ -132,7 +132,6 @@ int main(void) {
                 
                 //If the ADC should be read (Timer 1 interrupted the program)
                 if (adc_flag) {
-
                     adc_flag = 0;
                     adcValue = do_ADC();                        //Read the ADC
                     intensity = (adcValue * 100) / 1023;        //Find the intensity corresponding to it
@@ -198,7 +197,7 @@ int main(void) {
     return 0;
 }
 
-//Timer 1 controls counter the length of a blink, the time spent recording and triggers the reading of the ADC at a set interval
+//Timer 1 controls the length of a blink, the time spent recording and triggers the reading of the ADC at a set interval
 void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void){
     IFS0bits.T1IF = 0; //Clear flag
     
@@ -211,7 +210,7 @@ void __attribute__((interrupt, no_auto_psv)) _T1Interrupt(void){
             recording_time = 0;
         }
         
-        //Once 30 seconds have passed turn off recording
+        //Once 60 seconds have passed turn off recording
         if (seconds_spent_recording > 59){
             recordingFlag = 0;
             beginRecordingFlag = 0;
@@ -241,13 +240,14 @@ void __attribute__((interrupt, no_auto_psv)) _T2Interrupt(void){
     //If the current mode is OFF and PB2 triggered blinking, the LED should 100% on or 100% off
     if (mode == OFF && blinking) 
         LED ^= 1;
-        
+    //If mode is OFF && blinking == 0, LED should be 0
+    
+    
+    if (mode == ON) {
     //If the blinking is turned off, the logic for the brightness of the light should be used
     //or if time has reached above 500000 micro seconds, meaning the high end of the blink is happening, that should use the brightness logic too
-    if (mode == ON) {
         if (blink_time > 500000 || blinking == 0) 
         {
-           
             if (intensity == 0) LED = 0;    //LED is off if at minimum brightness
             else if (intensity == 99) LED = 1;    //LED is on if at maximum brightness
 

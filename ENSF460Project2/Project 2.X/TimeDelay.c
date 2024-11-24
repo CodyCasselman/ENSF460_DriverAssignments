@@ -53,7 +53,8 @@ void TimerInit() {
     TIMER3 = 0;
 }
 
-void set_timerX_us(uint32_t time_us, uint8_t timerNum){ //0 <= time_ms <= 986880ms
+void set_timerX_us(uint32_t time_us, uint8_t timerNum){ //0 <= time_us <= 986880ms
+    //Each PR value is calculated in a way to ensure low computation
     if(timerNum == 1){
         //Change timer1 PR value
         PR1 = (uint16_t)time_us / 64;
