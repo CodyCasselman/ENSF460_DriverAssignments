@@ -174,7 +174,6 @@ int main(void) {
             case OFF:
                 if (blinking)   //If off, but blinking is turned on, the timers should be on
                 {
-                    TIMER1 = 1;
                     TIMER2 = 1;
                     PR2 = (uint16_t)(500000 / 16);  //Set a constant rate of 0.5s for Timer 2 (Not variable like when in ON)
                 } else {        //If off, and blinking is off, both timers should also be off
